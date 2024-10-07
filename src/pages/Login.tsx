@@ -1,34 +1,39 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'; // Importando a função de autenticação
-import { RootStackParamList } from '../../App'; // Importar o tipo do stack
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'; 
+import { app } from '../firebaseConfig'; // Importando a instância do Firebase
+import { RootStackParamList } from '../../App';
 
-// Definir o tipo da navegação
 export function Login() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Adicionar tipo aqui
-  const [email, setEmail] = useState(''); // Estado para armazenar o email
-  const [password, setPassword] = useState(''); // Estado para armazenar a senha
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    const auth = getAuth(); // Obter instância do Firebase Auth
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        // O usuário está autenticado
-        const user = userCredential.user;
+  const handleLogin = async () => {
+    try {
+      const auth = getAuth(app);  // Obtenha a instância do auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, password); // Faça o login
+      const user = userCredential.user;  // Obtenha o usuário logado
+  
+      // Verifique se o email foi confirmado
+      if (user.emailVerified) {
         console.log('Usuário logado:', user);
-        navigation.navigate('Home'); // Navegar para a tela inicial
-      })
-      .catch((error) => {
-        const errorMessage = error.message;
-        Alert.alert('Erro', errorMessage); // Mostrar mensagem de erro
-      });
+        navigation.navigate('Home');  // Navegue para a tela Home
+      } else {
+        // Se o email não for verificado, mostre um alerta
+        Alert.alert('Erro', 'Por favor, verifique seu email antes de fazer login.');
+      }
+    } catch (error: any) {
+      const errorMessage = error.message;  // Capture e mostre a mensagem de erro
+      Alert.alert('Erro', errorMessage); 
+    }
   };
 
   return (
     <View style={styles.container}>
       <Image
-        source={require('../assets/LogoIcon.png')}  // Certifique-se do caminho correto
+        source={require('../assets/LogoIcon.png')} 
         style={styles.logoStyle}
       />
       <Text style={styles.title}>Login</Text>
@@ -38,7 +43,7 @@ export function Login() {
         placeholder="Email"
         placeholderTextColor="#555"
         value={email}
-        onChangeText={setEmail} // Atualiza o estado do email
+        onChangeText={setEmail}
       />
 
       <TextInput 
@@ -47,13 +52,13 @@ export function Login() {
         placeholderTextColor="#555" 
         secureTextEntry={true}
         value={password}
-        onChangeText={setPassword} // Atualiza o estado da senha
+        onChangeText={setPassword}
       />
 
       <TouchableOpacity 
         style={styles.button}
         activeOpacity={0.7}
-        onPress={handleLogin} // Chama a função de login
+        onPress={handleLogin}
       >
         <Text style={styles.buttonText}>Entrar</Text>
       </TouchableOpacity>

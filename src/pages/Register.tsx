@@ -1,12 +1,43 @@
-import React from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import { auth } from '../firebaseConfig'; // Importando a instância do Firebase
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { useNavigation, NavigationProp } from '@react-navigation/native'; 
+import { RootStackParamList } from '../../App'; 
 
 export function Register() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert("As senhas não coincidem!");
+      return;
+    }
+
+    try {
+    
+
+    const userCradential =   await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCradential.user;
+
+    await sendEmailVerification(user); //Envia email de verificação 
+    Alert.alert("Registro bem-sucedido!", "Verifique sua caixa de email para autenticação");
+    navigation.navigate('Login'); 
+    } catch (error: any) {
+      Alert.alert("Erro ao registrar", error.message); 
+    }
+  };
+
   return (
     <View style={styles.container}>
-
-    <Image
-        source={require('../assets/LogoIcon.png')}  // Certifique-se do caminho correto
+      <Image
+        source={require('../assets/LogoIcon.png')}  
         style={styles.logoStyle}
       />
       <Text style={styles.title}>Cadastro</Text>
@@ -15,45 +46,56 @@ export function Register() {
         style={styles.input} 
         placeholder="Nome Completo"
         placeholderTextColor="#555"
+        value={name}
+        onChangeText={setName}
       />
 
       <TextInput 
         style={styles.input} 
         placeholder="Email"
         placeholderTextColor="#555"
+        value={email}
+        onChangeText={setEmail}
       />
 
       <TextInput 
         style={styles.input} 
         placeholder="Telefone"
         placeholderTextColor="#555" 
-        secureTextEntry={true}
+        value={phone}
+        onChangeText={setPhone}
       />
 
-    <TextInput 
+      <TextInput 
         style={styles.input} 
         placeholder="Senha"
         placeholderTextColor="#555" 
         secureTextEntry={true}
+        value={password}
+        onChangeText={setPassword}
       />
 
-    <TextInput   
+      <TextInput 
         style={styles.input} 
         placeholder="Repetir Senha"
         placeholderTextColor="#555" 
         secureTextEntry={true}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
 
       <TouchableOpacity 
         style={styles.button}
         activeOpacity={0.7}
+        onPress={handleRegister}
       >
-        <Text style={styles.buttonText}>Registrar</Text>
+        <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -63,14 +105,14 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingTop: 50,
   },
-  logoStyle:{
-    height:250,
-    width:250
+  logoStyle: {
+    width: 250,
+    height: 250,
   },
   title: {
     color: '#FF8C00',
     fontSize: 35,
-    marginBottom: 20,
+    marginBottom: 10,
     fontWeight: 'bold',
   },
   input: {
@@ -78,7 +120,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     marginTop: 7,
     marginBottom: 15,
-    padding: 10, 
+    padding: 10,
     fontSize: 18,
     color: '#fff',
     width: '100%',
