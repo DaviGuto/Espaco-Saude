@@ -4,11 +4,15 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'; 
 import { app } from '../firebaseConfig'; // Importando a instância do Firebase
 import { RootStackParamList } from '../../App';
+import { CustomAlert } from '../components/CustomAlert';  
 
 export function Login() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [alertVisible, setAlertVisible] = useState(false)
+  const [alertMessage, setAlertMessage] = useState('');
+  
 
   const handleLogin = async () => {
     try {
@@ -22,11 +26,31 @@ export function Login() {
         navigation.navigate('Home');  // Navegue para a tela Home
       } else {
         // Se o email não for verificado, mostre um alerta
-        Alert.alert('Erro', 'Por favor, verifique seu email antes de fazer login.');
+        setAlertMessage('Por favor, verifique seu email antes de fazer login.');
+        setAlertVisible(true);
       }
     } catch (error: any) {
-      const errorMessage = error.message;  // Capture e mostre a mensagem de erro
-      Alert.alert('Erro', errorMessage); 
+      switch (error.code) {
+          case 'auth/user-not-found':
+              setAlertMessage("Não há registro correspondente a este endereço de e-mail.");
+              break;
+          case 'auth/wrong-password':
+              setAlertMessage("A senha é inválida ou o usuário não tem uma senha.");
+              break;
+          case 'auth/invalid-email':
+              setAlertMessage("O endereço de e-mail está malformado.");
+              break;
+          case 'auth/user-disabled':
+              setAlertMessage("Usuário desativado.");
+              break;
+          case 'auth/too-many-requests':
+              setAlertMessage("Você tentou fazer login muitas vezes. Tente novamente mais tarde.");
+              break;
+          default:
+              setAlertMessage("Erro ao fazer login.");
+              break;
+      }
+      setAlertVisible(true);
     }
   };
 
@@ -76,6 +100,13 @@ export function Login() {
       >
         <Text style={styles.registerText}>Registrar-se</Text>
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertVisible}
+        title="Falha na Autenticação"
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)} // Fecha o alerta
+      />
     </View>
   );
 }
@@ -119,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: {
-    color: '#333',
+    color: '#121015',
     fontWeight: 'bold',
   },
   forgotPassword: {

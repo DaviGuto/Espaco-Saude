@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../firebaseConfig'; // Importando a instância do Firebase
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNavigation, NavigationProp } from '@react-navigation/native'; 
 import { RootStackParamList } from '../../App'; 
+import { CustomAlert } from '../components/CustomAlert';
 
 export function Register() {
   const [name, setName] = useState('');
@@ -12,11 +13,15 @@ export function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [alertMessage, setAlertMessage] = useState ('');
+  const [alertVisible, setAlertVisible] = useState(false);
+
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
-      Alert.alert("As senhas não coincidem!");
+      setAlertMessage("As senhas não coincidem!");
+      setAlertVisible(true);
       return;
     }
 
@@ -27,10 +32,21 @@ export function Register() {
     const user = userCradential.user;
 
     await sendEmailVerification(user); //Envia email de verificação 
-    Alert.alert("Registro bem-sucedido!", "Verifique sua caixa de email para autenticação");
+    setAlertMessage("Registro bem-sucedido! Verifique sua caixa de email para autenticação");
+    setAlertVisible(true);
     navigation.navigate('Login'); 
     } catch (error: any) {
-      Alert.alert("Erro ao registrar", error.message); 
+      switch (error.code) {
+        case 'auth/invalid-email':
+          setAlertMessage("Email inválido.");
+          break;
+        case 'auth/email-already-in-use':
+          setAlertMessage("Este email já está em uso.");
+          break;
+        default:
+          setAlertMessage("Erro ao registrar");
+      }
+      setAlertVisible(true);
     }
   };
 
@@ -91,6 +107,14 @@ export function Register() {
       >
         <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertVisible}
+        title="Aviso"
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
+
     </View>
   );
 }
@@ -134,7 +158,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: {
-    color: '#333',
+    color: '#121015',
     fontWeight: 'bold',
   },
 });

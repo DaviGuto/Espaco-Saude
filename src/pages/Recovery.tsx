@@ -1,43 +1,61 @@
-import React from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import { sendPasswordResetEmail, getAuth } from 'firebase/auth'; 
+import { CustomAlert } from '../components/CustomAlert';
 
 export function Recovery() {
-  return (
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [email, setEmail] = useState('');
 
+  const handleResetPassword = async () => {
+    const auth = getAuth();
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setAlertMessage('Email de redefinição de senha enviado com sucesso!');
+      setAlertVisible(true);
+    } catch (error: any) {
+      setAlertMessage(error.message);
+      setAlertVisible(true);
+    }
+  };
+
+  return (
     <View style={styles.container}>
       <Image
-        source={require('../assets/LogoIcon.png')}  // Certifique-se do caminho correto
+        source={require('../assets/LogoIcon.png')}
         style={styles.logoStyle}
       />
 
       <Text style={styles.title}>Redefinir Senha</Text>
 
-
       <TextInput 
         style={styles.input} 
         placeholder="Endereço de Email"
         placeholderTextColor="#555"
+        value={email}
+        onChangeText={setEmail}
       />
 
       <TouchableOpacity 
         style={styles.button}
         activeOpacity={0.7}
+        onPress={handleResetPassword}
       >
         <Text style={styles.buttonText}>Recuperar</Text>  
       </TouchableOpacity>
 
-    <TouchableOpacity
-    style={styles.helpButton}
-    >
-      <Text style={styles.helpButtonText}>Precisa de Ajuda?</Text>
+      <TouchableOpacity style={styles.helpButton}>
+        <Text style={styles.helpButtonText}>Precisa de Ajuda?</Text>
+      </TouchableOpacity>
 
-    </TouchableOpacity>
-
+      <CustomAlert
+        visible={alertVisible}
+        title="Aviso"
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
     </View>
-
-
-
- 
   );
 }
 
@@ -50,10 +68,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingTop: 50,
   },
-
-  logoStyle:{
-    height:250,
-    width:250
+  logoStyle: {
+    height: 250,
+    width: 250,
   },
   title: {
     color: '#FF8C00',
@@ -80,7 +97,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: {
-    color: '#333',
+    color: '#121015',
     fontWeight: 'bold',
   },
   helpButton: {
@@ -89,5 +106,5 @@ const styles = StyleSheet.create({
   helpButtonText: {
     color: '#FF8C00',
     fontSize: 16,
-  }
+  },
 });
