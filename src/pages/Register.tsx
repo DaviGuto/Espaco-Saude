@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
-import { auth } from '../firebaseConfig'; // Importando a instância do Firebase
+import { auth } from '../firebaseConfig';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { useNavigation, NavigationProp } from '@react-navigation/native'; 
-import { RootStackParamList } from '../../App'; 
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../App';
 import { CustomAlert } from '../components/CustomAlert';
 
 export function Register() {
@@ -13,8 +13,41 @@ export function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [alertMessage, setAlertMessage] = useState ('');
+  const [alertMessage, setAlertMessage] = useState('');
   const [alertVisible, setAlertVisible] = useState(false);
+
+  const [showResendMessage, setShowResendMessage] = useState(false);
+  const [canResendEmail, setCanResendEmail] = useState(true);
+  const [timer, setTimer] = useState(0);
+
+  const handleResendEmail = async () => {
+    if (!canResendEmail) return;
+
+    try {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        console.log("E-mail de verificação reenviado.");
+        
+        setCanResendEmail(false);
+        setTimer(120); // Inicia o temporizador com 120 segundos (2 minutos)
+      }
+    } catch (error) {
+      console.log("Erro ao reenviar e-mail de verificação: ", error);
+    }
+  };
+
+  // Função para contar o tempo decrescente
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer(prevTimer => prevTimer - 1);
+      }, 1000);
+
+      return () => clearInterval(interval); // Limpa o temporizador ao desmontar o componente
+    } else if (timer === 0) {
+      setCanResendEmail(true); // Ativa o botão novamente após o tempo acabar
+    }
+  }, [timer]);
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
@@ -26,15 +59,13 @@ export function Register() {
     }
 
     try {
-    
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    const userCradential =   await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCradential.user;
-
-    await sendEmailVerification(user); //Envia email de verificação 
-    setAlertMessage("Registro bem-sucedido! Verifique sua caixa de email para autenticação");
-    setAlertVisible(true);
-    navigation.navigate('Login'); 
+      await sendEmailVerification(user);
+      setAlertMessage("Registro bem-sucedido! Verifique sua caixa de e-mail para autenticação.");
+      setAlertVisible(true);
+      setShowResendMessage(true);
     } catch (error: any) {
       switch (error.code) {
         case 'auth/invalid-email':
@@ -53,54 +84,54 @@ export function Register() {
   return (
     <View style={styles.container}>
       <Image
-        source={require('../assets/LogoIcon.png')}  
+        source={require('../assets/LogoIcon.png')}
         style={styles.logoStyle}
       />
       <Text style={styles.title}>Cadastro</Text>
 
-      <TextInput 
-        style={styles.input} 
+      <TextInput
+        style={styles.input}
         placeholder="Nome Completo"
         placeholderTextColor="#555"
         value={name}
         onChangeText={setName}
       />
 
-      <TextInput 
-        style={styles.input} 
+      <TextInput
+        style={styles.input}
         placeholder="Email"
         placeholderTextColor="#555"
         value={email}
         onChangeText={setEmail}
       />
 
-      <TextInput 
-        style={styles.input} 
+      <TextInput
+        style={styles.input}
         placeholder="Telefone"
-        placeholderTextColor="#555" 
+        placeholderTextColor="#555"
         value={phone}
         onChangeText={setPhone}
       />
 
-      <TextInput 
-        style={styles.input} 
+      <TextInput
+        style={styles.input}
         placeholder="Senha"
-        placeholderTextColor="#555" 
+        placeholderTextColor="#555"
         secureTextEntry={true}
         value={password}
         onChangeText={setPassword}
       />
 
-      <TextInput 
-        style={styles.input} 
+      <TextInput
+        style={styles.input}
         placeholder="Repetir Senha"
-        placeholderTextColor="#555" 
+        placeholderTextColor="#555"
         secureTextEntry={true}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.button}
         activeOpacity={0.7}
         onPress={handleRegister}
@@ -114,6 +145,25 @@ export function Register() {
         message={alertMessage}
         onClose={() => setAlertVisible(false)}
       />
+
+{/* Exibe a mensagem e o botão para reenviar e-mail apenas se o showResendMessage for verdadeiro */}
+{showResendMessage && (
+  <>
+    <TouchableOpacity
+      onPress={handleResendEmail}
+      disabled={!canResendEmail} // Desabilita o toque enquanto o temporizador está ativo
+    >
+      <Text
+        style={[
+          styles.resendButtonText,
+          { color: canResendEmail ? '#FF8C00' : '#999' } // Correção aqui
+        ]}
+      >
+        {canResendEmail ? 'Reenviar E-mail de verificação' : `Tente novamente em ${timer}s`}
+      </Text>
+    </TouchableOpacity>
+  </>
+)}
 
     </View>
   );
@@ -156,9 +206,16 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 20,
   },
   buttonText: {
     color: '#121015',
+    fontWeight: 'bold',
+  },
+
+  resendButtonText: {
+    marginTop: 10,
+    color: '#cecece',
     fontWeight: 'bold',
   },
 });
