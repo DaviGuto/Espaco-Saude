@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'; 
-import { app } from '../firebaseConfig'; // Importando a instância do Firebase
+import { getAuth, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'; 
+import { app, auth } from '../firebaseConfig'; 
 import { RootStackParamList } from '../../App';
 import { CustomAlert } from '../components/CustomAlert';  
 
@@ -10,49 +10,82 @@ export function Login() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [alertVisible, setAlertVisible] = useState(false)
+  const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-  
+
+  const [showResendMessage, setShowResendMessage] = useState(false);
+  const [canResendEmail, setCanResendEmail] = useState(true);
+  const [timer, setTimer] = useState(0);
 
   const handleLogin = async () => {
     try {
-      const auth = getAuth(app);  // Obtenha a instância do auth
-      const userCredential = await signInWithEmailAndPassword(auth, email, password); // Faça o login
-      const user = userCredential.user;  // Obtenha o usuário logado
-  
-      // Verifique se o email foi confirmado
+      const auth = getAuth(app); 
+      const userCredential = await signInWithEmailAndPassword(auth, email, password); 
+      const user = userCredential.user; 
+     
+
       if (user.emailVerified) {
         console.log('Usuário logado:', user);
-        navigation.navigate('Home');  // Navegue para a tela Home
+        navigation.navigate('Home');  
       } else {
-        // Se o email não for verificado, mostre um alerta
+       
         setAlertMessage('Por favor, verifique seu email antes de fazer login.');
         setAlertVisible(true);
+        setShowResendMessage(true); 
       }
     } catch (error: any) {
       switch (error.code) {
-          case 'auth/user-not-found':
-              setAlertMessage("Não há registro correspondente a este endereço de e-mail.");
-              break;
-          case 'auth/wrong-password':
-              setAlertMessage("A senha é inválida ou o usuário não tem uma senha.");
-              break;
-          case 'auth/invalid-email':
-              setAlertMessage("O endereço de e-mail está malformado.");
-              break;
-          case 'auth/user-disabled':
-              setAlertMessage("Usuário desativado.");
-              break;
-          case 'auth/too-many-requests':
-              setAlertMessage("Você tentou fazer login muitas vezes. Tente novamente mais tarde.");
-              break;
-          default:
-              setAlertMessage("Erro ao fazer login.");
-              break;
+        case 'auth/user-not-found':
+          setAlertMessage("Não há registro correspondente a este endereço de e-mail.");
+          break;
+        case 'auth/wrong-password':
+          setAlertMessage("A senha é inválida ou o usuário não tem uma senha.");
+          break;
+        case 'auth/invalid-email':
+          setAlertMessage("O endereço de e-mail está malformado.");
+          break;
+        case 'auth/user-disabled':
+          setAlertMessage("Usuário desativado.");
+          break;
+        case 'auth/too-many-requests':
+          setAlertMessage("Você tentou fazer login muitas vezes. Tente novamente mais tarde.");
+          break;
+        default:
+          setAlertMessage("Erro ao fazer login.");
+          break;
       }
       setAlertVisible(true);
     }
   };
+
+  const handleResendEmail = async () => {
+    if (!canResendEmail) return;
+
+    try {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        console.log("E-mail de verificação reenviado.");
+
+        setCanResendEmail(false);
+        setTimer(120); 
+      }
+    } catch (error) {
+      console.log("Erro ao reenviar e-mail de verificação: ", error);
+    }
+  };
+
+ 
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer(prevTimer => prevTimer - 1);
+      }, 1000);
+
+      return () => clearInterval(interval); 
+    } else if (timer === 0) {
+      setCanResendEmail(true); 
+    }
+  }, [timer]);
 
   return (
     <View style={styles.container}>
@@ -105,8 +138,25 @@ export function Login() {
         visible={alertVisible}
         title="Falha na Autenticação"
         message={alertMessage}
-        onClose={() => setAlertVisible(false)} // Fecha o alerta
+        onClose={() => setAlertVisible(false)} 
       />
+
+   
+      {showResendMessage && (
+        <TouchableOpacity
+          onPress={handleResendEmail}
+          disabled={!canResendEmail} 
+        >
+          <Text
+            style={[
+              styles.resendButtonText,
+              { color: canResendEmail ? '#FF8C00' : '#999' } 
+            ]}
+          >
+            {canResendEmail ? 'Reenviar E-mail de verificação' : `Tente novamente em ${timer}s`}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -167,4 +217,9 @@ const styles = StyleSheet.create({
     color: '#FF8C00',
     fontSize: 16,
   },
+  resendButtonText: {
+    marginTop: 10,
+    color: '#cecece',
+    fontWeight: 'bold',
+  }
 });

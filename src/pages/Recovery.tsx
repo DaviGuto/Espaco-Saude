@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Linking } from 'react-native';
 import { sendPasswordResetEmail, getAuth } from 'firebase/auth'; 
 import { CustomAlert } from '../components/CustomAlert';
 
@@ -19,6 +19,14 @@ export function Recovery() {
       setAlertVisible(true);
     }
   };
+
+  const handleLinkHelp = () => {
+    // URL que você deseja abrir
+    const url = 'https://api.whatsapp.com/send/?phone=5581989787613&text&type=phone_number&app_absent=0';
+    Linking.openURL(url).catch((err) => console.error('Erro ao abrir o link:', err));
+  };
+  
+
 
   return (
     <View style={styles.container}>
@@ -45,7 +53,7 @@ export function Recovery() {
         <Text style={styles.buttonText}>Recuperar</Text>  
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.helpButton}>
+      <TouchableOpacity style={styles.helpButton} onPress = {handleLinkHelp}>
         <Text style={styles.helpButtonText}>Precisa de Ajuda?</Text>
       </TouchableOpacity>
 

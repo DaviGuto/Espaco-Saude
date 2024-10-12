@@ -29,23 +29,23 @@ export function Register() {
         console.log("E-mail de verificação reenviado.");
         
         setCanResendEmail(false);
-        setTimer(120); // Inicia o temporizador com 120 segundos (2 minutos)
+        setTimer(120); 
       }
     } catch (error) {
       console.log("Erro ao reenviar e-mail de verificação: ", error);
     }
   };
 
-  // Função para contar o tempo decrescente
+
   useEffect(() => {
     if (timer > 0) {
       const interval = setInterval(() => {
         setTimer(prevTimer => prevTimer - 1);
       }, 1000);
 
-      return () => clearInterval(interval); // Limpa o temporizador ao desmontar o componente
+      return () => clearInterval(interval); 
     } else if (timer === 0) {
-      setCanResendEmail(true); // Ativa o botão novamente após o tempo acabar
+      setCanResendEmail(true); 
     }
   }, [timer]);
 
@@ -146,17 +146,17 @@ export function Register() {
         onClose={() => setAlertVisible(false)}
       />
 
-{/* Exibe a mensagem e o botão para reenviar e-mail apenas se o showResendMessage for verdadeiro */}
+
 {showResendMessage && (
   <>
     <TouchableOpacity
       onPress={handleResendEmail}
-      disabled={!canResendEmail} // Desabilita o toque enquanto o temporizador está ativo
+      disabled={!canResendEmail} 
     >
       <Text
         style={[
           styles.resendButtonText,
-          { color: canResendEmail ? '#FF8C00' : '#999' } // Correção aqui
+          { color: canResendEmail ? '#FF8C00' : '#999' } 
         ]}
       >
         {canResendEmail ? 'Reenviar E-mail de verificação' : `Tente novamente em ${timer}s`}

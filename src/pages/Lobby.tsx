@@ -3,17 +3,17 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import moment from 'moment';
-import 'moment/locale/pt-br'; // Importando a localidade pt-br
+import 'moment/locale/pt-br';
 
-export function Workouts() {
+export function Lobby() {
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
-  const flatListRef = useRef<FlatList>(null); // Referência para a FlatList
+  const flatListRef = useRef<FlatList>(null); 
   const Tab = createBottomTabNavigator();
 
-  // Definindo pt-br como localidade padrão
+  
   moment.locale('pt-br');
 
-  // Função para gerar dias da semana a partir da data atual
+  
   const generateDays = () => {
     let days = [];
     for (let i = -15; i <= 15; i++) {
@@ -29,10 +29,10 @@ export function Workouts() {
 
   const days = generateDays();
 
-  // Encontra o índice do dia atual na lista de dias
+ 
   const todayIndex = days.findIndex(day => day.dateString === moment().format('YYYY-MM-DD'));
 
-  // Quando o componente é montado, rola para o dia atual
+
   useEffect(() => {
     if (flatListRef.current) {
       flatListRef.current.scrollToIndex({ index: todayIndex, animated: true });
@@ -44,10 +44,10 @@ export function Workouts() {
       <View style={styles.container}>
         <Text style={styles.title}>Bem vindo, Usuário.</Text>
 
-        {/* Calendário horizontal */}
+
         <View style={styles.calendarWrapper}>
           <FlatList
-            ref={flatListRef} // Adiciona a referência à FlatList
+            ref={flatListRef} 
             data={days}
             horizontal
             keyExtractor={(item) => item.dateString}
@@ -78,16 +78,16 @@ export function Workouts() {
               </TouchableOpacity>
             )}
             showsHorizontalScrollIndicator={false}
-            initialScrollIndex={todayIndex} // Garante que o dia atual seja o inicial
+            initialScrollIndex={todayIndex} 
             getItemLayout={(data, index) => ({
-              length: 70, // Largura de cada item
+              length: 70, 
               offset: 70 * index,
               index,
-            })} // Para evitar erros de desempenho
+            })} 
           />
         </View>
 
-        {/* Informações do treino */}
+
         <View style={styles.contentBox}>
           <Text style={styles.infoText}>
             Treino do dia {moment(selectedDate).format('DD/MM/YYYY')}
@@ -118,9 +118,9 @@ export function Workouts() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: string = 'ios-help-circle-outline'; // Valor padrão
+          let iconName: string = 'ios-help-circle-outline';
 
-          // Definindo o ícone com base na rota
+
           if (route.name === 'Treinos') {
             iconName = focused ? 'barbell' : 'barbell-outline';
           } else if (route.name === 'Ajustes') {
@@ -131,8 +131,8 @@ export function Workouts() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#FF8C00', // Cor do ícone/texto ativo
-        tabBarInactiveTintColor: '#CECECE', // Cor do ícone/texto inativo
+        tabBarActiveTintColor: '#FF8C00', 
+        tabBarInactiveTintColor: '#CECECE',
         tabBarStyle: styles.navigatorStyle,
       })}
     >
@@ -151,20 +151,20 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 30,
-    marginBottom: 10, // Controla o espaço abaixo do título
+    marginBottom: 10, 
     marginLeft: 20,
     color: '#FF8C00',
     fontWeight: 'bold',
   },
   calendarWrapper: {
-    marginBottom: 20, // Controla o espaço entre o calendário e a caixa de treinos
+    marginBottom: 20, 
   },
   dayItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10, // Menor espaçamento horizontal
-    paddingVertical: 5, // Menor espaçamento vertical
-    marginHorizontal: 5, // Espaço entre os itens
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    marginHorizontal: 5, 
     borderRadius: 8,
     backgroundColor: '#222',
     width: 60,
@@ -175,14 +175,14 @@ const styles = StyleSheet.create({
   },
   dayText: {
     color: '#CECECE',
-    fontSize: 12, // Diminuindo o tamanho da fonte do nome do dia
+    fontSize: 12, 
   },
   selectedDayText: {
     color: '#FFF',
   },
   dayNumberText: {
     color: '#FFF',
-    fontSize: 14, // Diminuindo o tamanho da fonte do número do dia
+    fontSize: 14, 
     fontWeight: 'bold',
   },
   selectedDayNumberText: {

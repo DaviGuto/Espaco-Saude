@@ -2,7 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
-// Configuração do Firebase (use suas próprias credenciais aqui)
+
 const firebaseConfig = {
   apiKey: "AIzaSyAzoHBTxwkJivFuJjSwBowUuDN3NE0K6vw",
   authDomain: "espacosaude-4d84e.firebaseapp.com",
@@ -13,9 +13,9 @@ const firebaseConfig = {
   measurementId: "G-BVB6HP400Z"
 };
 
-// Inicialize o Firebase
+
 const app = initializeApp(firebaseConfig);
 
-// Exportando a instância de autenticação
+
 const auth = getAuth(app);
-export { app, auth }; // Certifique-se de que auth está sendo exportado aqui
+export { app, auth }; 
