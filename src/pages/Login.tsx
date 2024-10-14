@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { getAuth, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'; 
+import { getAuth, setPersistence, signInWithEmailAndPassword, sendEmailVerification, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth'; 
 import { app, auth } from '../firebaseConfig'; 
 import { RootStackParamList } from '../../App';
 import { CustomAlert } from '../components/CustomAlert';  
@@ -17,22 +17,31 @@ export function Login() {
   const [canResendEmail, setCanResendEmail] = useState(true);
   const [timer, setTimer] = useState(0);
 
+  // Função de login com persistência
   const handleLogin = async () => {
     try {
-      const auth = getAuth(app); 
-      const userCredential = await signInWithEmailAndPassword(auth, email, password); 
-      const user = userCredential.user; 
-     
+      const auth = getAuth(app);
 
-      if (user.emailVerified) {
-        console.log('Usuário logado:', user);
-        navigation.navigate('Home');  
-      } else {
-       
-        setAlertMessage('Por favor, verifique seu email antes de fazer login.');
-        setAlertVisible(true);
-        setShowResendMessage(true); 
-      }
+      // Define a persistência (padrão é LOCAL, então não é necessário no mobile)
+      await setPersistence(auth, inMemoryPersistence) // ou escolha outra persistência: 'local', 'session', 'none'
+        .then(async () => {
+          // Faz o login após configurar a persistência
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+
+          if (user.emailVerified) {
+            console.log('Usuário logado:', user);
+            navigation.navigate('Home');
+          } else {
+            setAlertMessage('Por favor, verifique seu email antes de fazer login.');
+            setAlertVisible(true);
+            setShowResendMessage(true);
+          }
+        })
+        .catch((error) => {
+          // Lida com os erros de persistência
+          console.log("Erro de persistência:", error);
+        });
     } catch (error: any) {
       switch (error.code) {
         case 'auth/user-not-found':
@@ -74,16 +83,16 @@ export function Login() {
     }
   };
 
- 
+  // Configura o timer para o botão de reenviar o email
   useEffect(() => {
     if (timer > 0) {
       const interval = setInterval(() => {
         setTimer(prevTimer => prevTimer - 1);
       }, 1000);
 
-      return () => clearInterval(interval); 
+      return () => clearInterval(interval);
     } else if (timer === 0) {
-      setCanResendEmail(true); 
+      setCanResendEmail(true);
     }
   }, [timer]);
 
@@ -141,7 +150,6 @@ export function Login() {
         onClose={() => setAlertVisible(false)} 
       />
 
-   
       {showResendMessage && (
         <TouchableOpacity
           onPress={handleResendEmail}
