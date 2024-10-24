@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Modal } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import * as ImagePicker from 'expo-image-picker';
 import { storage, firestore } from '../firebaseConfig'; // Certifique-se de importar o Firestore
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+
 
 interface Post {
+  id: string;
   uri: string;
   title: string;
   caption: string;
@@ -45,137 +47,277 @@ export function Lobby() {
     }
   }, [todayIndex]);
 
+  
   function Home() {
     const [imageUri, setImageUri] = useState<string | null>(null);
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [carouselPosts, setCarouselPosts] = useState<Post[]>([]);
+    const [mainPost, setMainPost] = useState<Post | null>(null);
     const [title, setTitle] = useState('');
     const [caption, setCaption] = useState('');
+    const [isCarousel, setIsCarousel] = useState(true);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [isImageSelected, setIsImageSelected] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [updateCount, setUpdateCount] = useState(0);
+    const [mainsPostSelected, setMainPostSelected] = useState(false)
+
+
+    //função para atualizar pagina
+    const forceRefresh = () => {
+      setUpdateCount(prev => prev + 1);
+    };
 
     // Função para carregar posts do Firestore
     const loadPosts = async () => {
       try {
         const querySnapshot = await getDocs(collection(firestore, 'posts'));
-        const postsData: Post[] = [];
+        const carouselPostsData: Post[] = [];
+        let mainPostData: Post | null = null;
+  
         querySnapshot.forEach((doc) => {
-          postsData.push({
-            uri: doc.data().uri,
-            title: doc.data().title,
-            caption: doc.data().caption,
-            date: doc.data().date,
-          });
+          const data = doc.data();
+          const post = {
+            id: doc.id,
+            uri: data.uri || '',
+            title: data.title || '',
+            caption: data.caption || '',
+            date: data.date || '',
+            isMainPost: data.isMainPost || false,
+          };
+  
+          if (post.isMainPost) {
+            mainPostData = post;
+          } else {
+            carouselPostsData.push(post);
+          }
         });
-        // Ordenar postagens pela data
-        postsData.sort((a, b) => (a.date < b.date ? 1 : -1)); // Último primeiro
-        setPosts(postsData);
+  
+        // Ordenar os posts de carrossel pela data
+        carouselPostsData.sort((a, b) => (a.date < b.date ? 1 : -1));
+        setCarouselPosts(carouselPostsData);
+        setMainPost(mainPostData);
       } catch (error) {
         console.error('Erro ao carregar posts', error);
       }
     };
-
+  
     const handleImagePick = async () => {
-      console.log("Botão de Adicionar foi clicado!");
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [4, 3],
+        aspect: [25, 25],
         quality: 1,
       });
-
+  
       if (!result.canceled) {
         setImageUri(result.assets[0].uri);
+        setIsImageSelected(true); // Atualiza o estado quando uma imagem é selecionada
       }
     };
 
+    const handleDeletePost = async (postID: string, imageURL: string) => {
+      try {
+
+        if (imageURL){
+          const imageRef = ref(storage, imageURL);
+          await deleteObject (imageRef);
+          console.log("Imagem deletada do storage");
+        }
+
+        await deleteDoc(doc(firestore, "posts", postID))
+        forceRefresh()
+        console.log("ID excluido do firestore")
+      } catch (error){
+        console.log("Erro ao apagar post")
+      }    
+    }
+  
     const uploadImage = async () => {
       if (!imageUri) return;
-
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-
-      const imageRef = ref(storage, `images/${Date.now()}`);
-      await uploadBytes(imageRef, blob);
-      const url = await getDownloadURL(imageRef);
-
-      // Adiciona o post ao Firestore
+    
+      // Define como "uploading" antes de qualquer operação começar
+      setIsUploading(true); // inicia o upload
+      console.log('isUploading:', isUploading);
+    
       try {
+        // Faz o upload da imagem
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+        const imageRef = ref(storage, `images/${Date.now()}`);
+        await uploadBytes(imageRef, blob);
+        const url = await getDownloadURL(imageRef);
+    
+        // Define os dados do novo post
         const newPost = {
           uri: url,
-          title: title,
-          caption: caption,
-          date: moment().format('YYYY-MM-DD HH:mm:ss'), // Adiciona a data atual
+          title,
+          caption,
+          date: moment().format('YYYY-MM-DD HH:mm:ss'),
+          isMainPost: !isCarousel,
         };
-        await addDoc(collection(firestore, 'posts'), newPost);
-        setPosts((prevPosts) => [newPost, ...prevPosts]); // Adiciona novo post ao início
-        setImageUri(null); // Limpa a imagem depois do upload
-        setTitle(''); // Limpa o título
-        setCaption(''); // Limpa a legenda
+    
+        // Se for post de carrossel, verifica se já existem 5 e apaga o mais antigo
+        if (isCarousel) {
+          const querySnapshot = await getDocs(collection(firestore, 'posts'));
+          const carouselPostsData: Post[] = [];
+    
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (!data.isMainPost) {
+              carouselPostsData.push({
+                id: doc.id,
+                ...data,
+                uri: '',
+                title: '',
+                caption: '',
+                date: '',
+              });
+            }
+          });
+    
+          if (carouselPostsData.length >= 5) {
+            const oldestPost = carouselPostsData[carouselPostsData.length - 1];
+            await deleteDoc(doc(firestore, 'posts', oldestPost.id));
+          }
+        } else {
+          // Se for post principal, apaga o anterior
+          if (mainPost) {
+            await deleteDoc(doc(firestore, 'posts', mainPost.id));
+          }
+        }
+    
+        // Adiciona o novo post ao Firestore
+        const newPostRef = await addDoc(collection(firestore, 'posts'), newPost);
+        const completePost: Post = { id: newPostRef.id, ...newPost };
+    
+        // Atualiza o estado local
+        if (isCarousel) {
+          setCarouselPosts((prev) => [completePost, ...prev]);
+        } else {
+          setMainPost(completePost);
+        }
+    
+        // Reseta os estados após o upload
+        setImageUri(null);
+        setTitle('');
+        setCaption('');
+        setIsImageSelected(false);
+        console.log('isImageSelected:', isImageSelected);
       } catch (error) {
         console.error('Erro ao adicionar post ao Firestore', error);
+      } finally {
+        // Assegura que isUploading seja falso ao final do processo
+        setIsUploading(false); // termina o upload
+        forceRefresh()
       }
+
+      
     };
 
+  
     useEffect(() => {
-      loadPosts(); // Carrega os posts quando o componente é montado
+      loadPosts();
     }, []);
-
+  
     return (
-      <View style={styles.container}>
+      <View style={styles.container} >
         <Text style={styles.title}>Bem-vindo, Usuário.</Text>
-        <Text style={[styles.title, { marginTop: 20 }, {color: '#CECECE'}]}>Novidades:</Text>
+  
+        {/* Carrossel de posts pequenos */}
+        <FlatList
+          data={carouselPosts}
+          horizontal
+          renderItem={({ item }) => (
+            <View style={styles.carouselPostContainer}>
+              <Image source={{ uri: item.uri }} style={styles.carouselPostImage} />
+              <Text style={styles.postTitle}>{item.title}</Text>
+            </View>
+          )}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.carouselContainer}
+        />
+        <View style={styles.parentContainerMainPost}>
+          {/* Post principal grande */}
+          {mainPost && (
+            <View style={styles.mainPostContainer}>
+              <Image source={{ uri: mainPost.uri }} style={styles.mainPostImage} />
+              <Text style={styles.mainPostTitle}>{mainPost.title}</Text>
+              <Text style={styles.mainPostCaption}>{mainPost.caption}</Text>
+              <Text style={styles.mainPostDate}>{moment(mainPost.date).format('DD/MM/YYYY HH:mm')}</Text>
+              <TouchableOpacity 
+              style={[{position: 'absolute', right:15, bottom: 15}]}
+              onPress={() => handleDeletePost(mainPost.id, mainPost.uri)}
+              >
+                <Ionicons name = 'trash-outline' size={24} color = "#101215"/>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+        {/* Modal para selecionar tipo de post */}
+        <Modal visible={modalVisible} transparent>
+          <View style={styles.modalContainer}>
+            <TouchableOpacity style={styles.buttomAddPost} onPress={() => { setIsCarousel(true); setModalVisible(false); handleImagePick(); }}>
+              <Text style={styles.modalOption}>Adicionar ao carrossel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.buttomAddPost, {marginTop: 20}]} onPress={() => { setIsCarousel(false); setModalVisible(false); handleImagePick(); }}>
+              <Text style={styles.modalOption}>Adicionar ao post principal</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+  
+        {/* Botão de adicionar */}
 
-        {/* Se uma imagem for selecionada, mostra a imagem e os campos para título e legenda */}
-        {imageUri ? (
+        {!isUploading && !imageUri && ( // Renderiza o botão apenas se não estiver fazendo upload
+        <TouchableOpacity
+            style={[styles.button, isImageSelected && { opacity: 0.5 }]}
+            onPress={() => setModalVisible(true)}
+            disabled={isImageSelected}
+        >
+            <Ionicons name="add-circle-outline" size={24} color="#101215" />
+            <Text style={styles.buttonText}>Adicionar</Text>
+        </TouchableOpacity>
+    )}
+  
+        {/* Carregar pré-visualização da imagem */}
+        {imageUri && !isCarousel && (
           <>
-            {/* Preview da imagem */}
-            <Image source={{ uri: imageUri }} style={styles.previewImage} />
 
-            {/* Campos para Título e Legenda */}
             <TextInput
-              style={styles.input}
-              placeholder="Título"
-              placeholderTextColor="#CECECE"
-              value={title}
-              onChangeText={setTitle}
-            />
+            style = {styles.input}
+            placeholder="Digite o título do post principal"
+            value={title}
+            onChangeText={setTitle} // Atualiza o estado da legenda
+            />    
+
             <TextInput
-              style={styles.input}
-              placeholder="Legenda"
-              placeholderTextColor="#CECECE"
+              style = {[styles.input, {marginTop: 60}] }
+              placeholder="Digite a legenda do post principal"
               value={caption}
-              onChangeText={setCaption}
+              onChangeText={setCaption} // Atualiza o estado da legenda
             />
 
-            {/* Botão para fazer upload da imagem */}
-            <TouchableOpacity onPress={uploadImage} style={[styles.button, { zIndex: 11 }, { justifyContent: 'center' }]}>
-              <Ionicons name="cloud-upload-outline" size={24} color="#101215" />
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            <TouchableOpacity style={[styles.button, {justifyContent: 'center'}]} onPress={uploadImage}>
+            <Ionicons name="cloud-upload-outline" size={24} color="#101215" />
               <Text style={styles.buttonText}>Enviar</Text>
             </TouchableOpacity>
           </>
-        ) : (
-          // Caso não haja imagem, mostra o botão "Adicionar"
-          <TouchableOpacity style={styles.button} onPress={handleImagePick}>
-            <Ionicons name="add-circle-outline" size={24} color="#101215" />
-            <Text style={styles.buttonText}>Adicionar</Text>
-          </TouchableOpacity>
         )}
-
-        {/* FlatList para exibir os posts */}
-        <FlatList
-          data={posts}
-          renderItem={({ item }) => (
-            <View style={styles.postContainer}>
-              <Image source={{ uri: item.uri }} style={styles.postImage} />
-              <Text style={styles.postTitle}>{item.title}</Text>
-              <Text style={styles.postCaption}>{item.caption}</Text>
-              <Text style={styles.postDate}>{moment(item.date).format('DD/MM/YYYY HH:mm')}</Text>
-            </View>
-          )}
-          keyExtractor={(item, index) => index.toString()}
-          contentContainerStyle={styles.flatListContainer}
-        />
+                {imageUri && isCarousel && (
+          <>
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            <TouchableOpacity style={[styles.button, {justifyContent: 'center'}]} onPress={uploadImage}>
+            <Ionicons name="cloud-upload-outline" size={24} color="#101215" />
+              <Text style={styles.buttonText}>Enviar</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     );
   }
+  
+  
+  
   
 
   function Workouts() {
@@ -335,8 +477,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#121015',
   },
   previewImage: {
-    width: '100%',
-    height: 200,
+    borderRadius: 8,
+    position: 'absolute',
+    top:'40%',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 350,
+    height: 300,
     marginVertical: 10,
   },
   postImage: {
@@ -369,12 +517,16 @@ const styles = StyleSheet.create({
     paddingBottom: 20, // Espaço inferior para evitar que itens fiquem muito próximos à borda
   },
   input: {
-    borderColor: '#FF8C00',
-    borderWidth: 1,
-    borderRadius: 5,
+    position:'absolute',
+    marginTop: 5,
+    top: '80%',
+    borderRadius: 10,
     padding: 10,
     marginVertical: 5,
     color: '#CECECE',
+    width: 350,
+    backgroundColor: '#222',
+    alignSelf: 'center'
   },
   postContainer: {
     width:400,
@@ -399,4 +551,78 @@ const styles = StyleSheet.create({
     color: '#000',
   },
 
+  // Estilo para o carrossel de posts pequenos
+  carouselContainer: {
+    marginBottom: 24,
+  },
+  carouselPostContainer: {
+    marginRight: 16,
+    alignItems: 'center',
+  },
+  carouselPostImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  // Estilo para o post principal grande
+
+  parentContainerMainPost:{ 
+    position: 'absolute',
+    top:'40%',
+    alignItems: 'center',
+    width: '100%'
+  },
+  mainPostContainer: {
+    marginBottom: 32,
+    padding: 16,
+    backgroundColor: '#333',
+    borderRadius: 12,
+    width: '90%'
+  },
+  mainPostImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  mainPostTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  mainPostCaption: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  mainPostDate: {
+    fontSize: 12,
+    color: '#888',
+  },
+  // Estilo para o botão de adicionar
+
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalOption: {
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: 200,
+    textAlign: 'center',
+    color:'#FF8C00',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  buttomAddPost: {
+    justifyContent: 'center',
+    width: 180,
+    height: 100,
+    alignItems: 'center',
+    backgroundColor: '#222',
+    borderRadius: 20,
+  },
 });

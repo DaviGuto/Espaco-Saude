@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { getAuth, setPersistence, signInWithEmailAndPassword, sendEmailVerification, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth'; 
+import { getAuth, setPersistence, signInWithEmailAndPassword, sendEmailVerification, inMemoryPersistence, } from 'firebase/auth'; 
 import { app, auth } from '../firebaseConfig'; 
 import { RootStackParamList } from '../../App';
-import { CustomAlert } from '../components/CustomAlert';  
+import { CustomAlert } from '../components/CustomAlert';
 
 export function Login() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -12,7 +12,6 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-
   const [showResendMessage, setShowResendMessage] = useState(false);
   const [canResendEmail, setCanResendEmail] = useState(true);
   const [timer, setTimer] = useState(0);
@@ -22,10 +21,10 @@ export function Login() {
     try {
       const auth = getAuth(app);
 
-      // Define a persistência (padrão é LOCAL, então não é necessário no mobile)
-      await setPersistence(auth, inMemoryPersistence) // ou escolha outra persistência: 'local', 'session', 'none'
+      // Define a persistência 
+      await setPersistence(auth, inMemoryPersistence)
         .then(async () => {
-          // Faz o login após configurar a persistência
+          
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           const user = userCredential.user;
 
@@ -39,7 +38,7 @@ export function Login() {
           }
         })
         .catch((error) => {
-          // Lida com os erros de persistência
+          
           console.log("Erro de persistência:", error);
         });
     } catch (error: any) {
@@ -48,10 +47,10 @@ export function Login() {
           setAlertMessage("Não há registro correspondente a este endereço de e-mail.");
           break;
         case 'auth/wrong-password':
-          setAlertMessage("A senha é inválida ou o usuário não tem uma senha.");
+          setAlertMessage("A senha é inválida.");
           break;
         case 'auth/invalid-email':
-          setAlertMessage("O endereço de e-mail está malformado.");
+          setAlertMessage("O endereço de e-mail está divergente.");
           break;
         case 'auth/user-disabled':
           setAlertMessage("Usuário desativado.");
