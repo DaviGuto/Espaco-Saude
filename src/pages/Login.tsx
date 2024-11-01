@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { getAuth, setPersistence, signInWithEmailAndPassword, sendEmailVerification, inMemoryPersistence, } from 'firebase/auth'; 
+import { getAuth, signInWithEmailAndPassword, sendEmailVerification, setPersistence, browserLocalPersistence,  } from 'firebase/auth'; 
 import { app, auth } from '../firebaseConfig'; 
 import { RootStackParamList } from '../../App';
 import { CustomAlert } from '../components/CustomAlert';
@@ -16,55 +16,52 @@ export function Login() {
   const [canResendEmail, setCanResendEmail] = useState(true);
   const [timer, setTimer] = useState(0);
 
-  // Função de login com persistência
+
+  
+  // Função de login
   const handleLogin = async () => {
+
+    
+
     try {
+
+      
       const auth = getAuth(app);
 
-      // Define a persistência 
-      await setPersistence(auth, inMemoryPersistence)
-        .then(async () => {
-          
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          const user = userCredential.user;
-
-          if (user.emailVerified) {
-            console.log('Usuário logado:', user);
-            navigation.navigate('Home');
-          } else {
-            setAlertMessage('Por favor, verifique seu email antes de fazer login.');
-            setAlertVisible(true);
-            setShowResendMessage(true);
-          }
-        })
-        .catch((error) => {
-          
-          console.log("Erro de persistência:", error);
-        });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+  
+      if (user.emailVerified) {
+        console.log('Usuário logado:', user);
+        navigation.navigate('Home');
+      } else {
+        setAlertMessage('Por favor, verifique seu email antes de fazer login.');
+        setAlertVisible(true);
+        setShowResendMessage(true);
+      }
     } catch (error: any) {
       switch (error.code) {
-        case 'auth/user-not-found':
-          setAlertMessage("Não há registro correspondente a este endereço de e-mail.");
+        case 'auth/missing-password':
+          setAlertMessage("Digite sua Senha.");
           break;
-        case 'auth/wrong-password':
-          setAlertMessage("A senha é inválida.");
+        case 'auth/invalid-credential':
+          setAlertMessage("Email ou Senha inválida.");
           break;
         case 'auth/invalid-email':
-          setAlertMessage("O endereço de e-mail está divergente.");
+          setAlertMessage("E-mail inválido.");
           break;
         case 'auth/user-disabled':
           setAlertMessage("Usuário desativado.");
           break;
-        case 'auth/too-many-requests':
-          setAlertMessage("Você tentou fazer login muitas vezes. Tente novamente mais tarde.");
-          break;
         default:
           setAlertMessage("Erro ao fazer login.");
+          console.log(error.code);
           break;
       }
       setAlertVisible(true);
     }
   };
+  
 
   const handleResendEmail = async () => {
     if (!canResendEmail) return;

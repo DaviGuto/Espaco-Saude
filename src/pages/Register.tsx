@@ -20,37 +20,11 @@ export function Register() {
   const [canResendEmail, setCanResendEmail] = useState(true);
   const [timer, setTimer] = useState(0);
 
-  const handleResendEmail = async () => {
-    if (!canResendEmail) return;
-
-    try {
-      if (auth.currentUser) {
-        await sendEmailVerification(auth.currentUser);
-        console.log("E-mail de verificação reenviado.");
-        
-        setCanResendEmail(false);
-        setTimer(120); 
-      }
-    } catch (error) {
-      console.log("Erro ao reenviar e-mail de verificação: ", error);
-    }
-  };
-
-
-  useEffect(() => {
-    if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer(prevTimer => prevTimer - 1);
-      }, 1000);
-
-      return () => clearInterval(interval); 
-    } else if (timer === 0) {
-      setCanResendEmail(true); 
-    }
-  }, [timer]);
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+
+  {/*Função de registro de usuário*/}
   const handleRegister = async () => {
     if (password !== confirmPassword) {
       setAlertMessage("As senhas não coincidem!");
@@ -80,6 +54,36 @@ export function Register() {
       setAlertVisible(true);
     }
   };
+
+  {/*Função para reenviar E-mail*/}
+  const handleResendEmail = async () => {
+    if (!canResendEmail) return;
+
+    try {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        console.log("E-mail de verificação reenviado.");
+        
+        setCanResendEmail(false);
+        setTimer(120); 
+      }
+    } catch (error) {
+      console.log("Erro ao reenviar e-mail de verificação: ", error);
+    }
+  };
+
+  {/*Função timer para reenviar E-mail*/}
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer(prevTimer => prevTimer - 1);
+      }, 1000);
+
+      return () => clearInterval(interval); 
+    } else if (timer === 0) {
+      setCanResendEmail(true); 
+    }
+  }, [timer]);
 
   return (
     <View style={styles.container}>
